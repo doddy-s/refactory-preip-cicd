@@ -3,15 +3,22 @@
 import { Box, Button, Input, InputAdornment, Typography } from '@mui/material';
 import { loginAction } from '../actions';
 import { Email, Key, Login } from '@mui/icons-material';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { PasswordInput } from './LoginInput';
 
 export function LoginForm() {
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleLoginFormSubmit(formData: FormData) {
+    setError(null);
+
     startTransition(async () => {
-      await loginAction(formData);
+      const result = await loginAction(formData);
+
+      if (result.error) {
+        setError(result.error);
+      }
     });
   }
   return (
@@ -58,6 +65,12 @@ export function LoginForm() {
           }
         />
       </div>
+      {
+        error &&
+        <Typography component="label" className="mb-4 text-red-700">
+          { error }
+        </Typography>
+      }
       <Button
         disabled={isPending}
         type="submit"
