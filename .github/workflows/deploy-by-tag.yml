@@ -1,0 +1,44 @@
+name: Medpoint Deployment by Tag on Preview
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  Deploy-Production:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Set Gitconfig to Access jekoneng-web-ui
+        run: git config --global url."https://${{ secrets.GITEA_TOKEN }}@gitea.sev-2.com".insteadOf ssh://gitea.sev-2.com
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Build Project Artifacts
+        run: vercel build --target=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Set Env Variables
+        run: |
+          while IFS='=' read -r key value || [ -n "$key" ]; do
+            # Skip empty lines and comments
+            [[ -z "$key" || "$key" == \#* ]] && continue
+
+            # Pipe value to vercel env add
+            printf '%s' "$value" | vercel env add "$key" preview --force --token=${{ secrets.VERCEL_TOKEN }}
+          done < <(echo "${{ secrets.DOTENV }}")
+
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --target=preview --token=${{ secrets.VERCEL_TOKEN }}
